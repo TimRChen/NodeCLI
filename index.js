@@ -1,77 +1,78 @@
 /**
- * @file command-file CLI 
+ * @file select file or directory and check content CLI by NodeJs
  * @author <huangjiandong>
  */
 
 const fs = require('fs');
-const stdin = process.stdin;
 const stdout = process.stdout;
+const stdin = process.stdin;
 
 fs.readdir(process.cwd(), function (err, files) {
     console.log('');
-    // console 的作用是为了换行，使用户界面友好
+ 
     if (!files.length) {
-        return console.log('    \033[31m No files to show!\033[39m\n');
+         return console.log('   \033[31m No files to show!\033[39m\n');  
     }
 
-    console.log('   Select which file or directory you want to see\n');
+    console.log('   Select which file or directory you want to see.\n');
 
+    // 用于存储stat对象，以便调用isDirectory()方法
     let stats = [];
     let file = i => {
-        let filename = files[i];        
-
-        // fs.stat 会给出文件或者目录的元数据
-        fs.stat(__dirname + '/' + filename, function (err, stat) {
+        let filename = files[i];
+        // 定义每个文件的路径
+        const pathname = __dirname + '/' + filename;
+        // 读取文件元数据
+        fs.stat(pathname, function (err, stat) {
             stats[i] = stat;
-            //  stat.isDirectory() 可以判断路径所代表的是文件夹还是文件
             if (stat.isDirectory()) {
-                console.log('   ' + i + '   \033[36m' + filename + '\033[39m');
+                console.log('       \033[32m' + i + '\033[30m' + '  \033[36m' + filename + '/\033[30m');
             } else {
-                console.log('   ' + i + '   \033[90m' + filename + '\033[39m');
+                console.log('       \033[32m' + i + '\033[30m' + '  \033[90m' + filename + '\033[30m');
             }
 
-            i++;
-            if (i === files.length) {
+            if (++i === files.length) {
                 read();
             } else {
                 file(i);
-            }
+            }            
         });
 
-        // read user input when files are shown
+        // 用户输入行为
         let read = () => {
             console.log('');
-            stdout.write('  \033[33mEnter your choice: \033[39m');
-            // 等待用户输入
+            stdout.write('   \033[33mEnter your choice: \033[39m');
             stdin.resume();
-            stdin.setEncoding('utf8');
-
-            // 开始监听data事件
             stdin.on('data', option);
         };
 
-        // called with the option supplied by the user
-        let option = data => {
-            let filename = files[Number(data)];
-            //  检查用户的输入是否匹配files数组中的下标
-            if (stats[Number(data)].isDirectory()) {
-                fs.readdir(__dirname + '/' + filename, function (err, files) {
-                    console.log('');
-                    console.log('   (' + files.length + ' files)');
-                    files.forEach(function (file) {
-                        console.log('   -  ' + file);
-                    });
-                    console.log('');
-                });
+        // 监听用户输入行为后作出响应
+        let option = inputData => {
+            // 确保文件路径为输入对应的
+            let filename = files[Number(inputData)];
+            if (!filename) {
+                // 说明输入的不是数字
+                stdout.write('   \033[31mEnter your choice: \033[39m');
+                stdin.resume();
             } else {
-                //  读取用户文件，并指定编码
-                fs.readFile(__dirname + '/' + filename, 'utf8', function (err, data) {
-                    console.log('');
-                    //  正则表达式作用为辅助缩进
-                    console.log('\033[90m' + data.replace(/(.*)/g, '    $1') + '\033[39m');
-                });
+                if (stats[Number(inputData)].isDirectory()) {
+                    fs.readdir(__dirname + '/' + filename, function (err, files) {
+                        console.log('');
+                        console.log('   (' + files.length + ' files)');
+                        files.forEach(function (file) {
+                            console.log('    -  ' + file);
+                        });
+                    });
+                } else {
+                    fs.readFile(__dirname + '/' + filename, 'utf8', function (err, data) {
+                        console.log('');
+                        console.log('\033[90m' + data.replace(/(.*)/g, '    $1') + '\033[39m');
+                    });
+                }
             }
         };
     };
     file(0);
 });
+
+
